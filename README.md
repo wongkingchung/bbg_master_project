@@ -4,7 +4,8 @@ A small Python tool that manipulates two audio files:
 
 1. Splits a **familiar song** into a specified number of chunks.
 2. Extracts a random chunk from an **unfamiliar song** with the same length as one familiar chunk.
-3. Inserts ("stuffs") the unfamiliar chunk among the familiar chunks.
+3. Stuffs the unfamiliar chunk **between every consecutive pair** of familiar chunks, producing a pattern like:
+   `S1c1 + S2cx + S1c2 + S2cx + S1c3 + ...`
 4. Exports the mixed audio to a file.
 
 ## Setup
@@ -28,22 +29,21 @@ python audio_manipulator.py familiar.wav unfamiliar.wav -n 4 -o output.wav
 | `familiar` | Path to the familiar song. |
 | `unfamiliar` | Path to the unfamiliar song. |
 | `-n`, `--num-chunks` | Number of chunks to split the familiar song into (default: 4). |
-| `-p`, `--position` | Index at which to insert the unfamiliar chunk. `0` = before the first chunk, `N` = after the last chunk. If omitted, a random position is used. |
 | `-o`, `--output` | Output file path (default: `output.wav`). |
-| `-s`, `--seed` | Random seed for reproducible random chunk/position selection. |
+| `-s`, `--seed` | Random seed for reproducible random unfamiliar chunk selection. |
 
 ### Examples
-
-Insert at a specific position:
-
-```bash
-python audio_manipulator.py familiar.mp3 unfamiliar.mp3 -n 5 -p 2 -o mixed.mp3
-```
 
 Reproducible randomization:
 
 ```bash
 python audio_manipulator.py familiar.wav unfamiliar.wav -n 4 -s 123 -o output.wav
+```
+
+Use MP3 files (requires ffmpeg):
+
+```bash
+python audio_manipulator.py familiar.mp3 unfamiliar.mp3 -n 5 -o mixed.mp3
 ```
 
 ## Notes

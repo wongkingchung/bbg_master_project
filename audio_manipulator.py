@@ -4,7 +4,7 @@ Audio Manipulator
 Manipulates two audio files:
 1. Splits a familiar song into a specified number of chunks.
 2. Extracts a random chunk from an unfamiliar song with the same length as one familiar chunk.
-3. Inserts the unfamiliar chunk among the split familiar chunks.
+3. Stuffs the unfamiliar chunk between every consecutive pair of familiar chunks.
 4. Exports the resulting audio to a file.
 
 Dependencies:
@@ -86,38 +86,34 @@ def extract_random_chunk(audio: AudioSegment, chunk_length_ms: int) -> AudioSegm
 def stuff_chunk(
     familiar_chunks: list[AudioSegment],
     unfamiliar_chunk: AudioSegment,
-    insert_position: int | None = None,
 ) -> AudioSegment:
     """
-    Insert `unfamiliar_chunk` into `familiar_chunks`.
+    Stuff `unfamiliar_chunk` among `familiar_chunks`.
+
+    The unfamiliar chunk is inserted between every consecutive pair of
+    familiar chunks, producing a pattern like:
+        S1c1 + S2cx + S1c2 + S2cx + S1c3 + ...
 
     Args:
         familiar_chunks: List of AudioSegment chunks from the familiar song.
-        unfamiliar_chunk: The chunk to insert.
-        insert_position: Index at which to insert. If None, a random position
-            (including before the first and after the last chunk) is chosen.
+        unfamiliar_chunk: The chunk to insert between familiar chunks.
 
     Returns:
-        A single AudioSegment with the unfamiliar chunk inserted.
+        A single AudioSegment with the unfamiliar chunk interleaved.
     """
     if not familiar_chunks:
         raise ValueError("Familiar song must have at least one chunk.")
 
-    if insert_position is None:
-        insert_position = random.randint(0, len(familiar_chunks))
-    elif not (0 <= insert_position <= len(familiar_chunks)):
-        raise ValueError(
-            f"Insert position must be between 0 and {len(familiar_chunks)}."
-        )
-
-    combined_chunks = familiar_chunks.copy()
-    combined_chunks.insert(insert_position, unfamiliar_chunk)
-    return sum(combined_chunks[1:], combined_chunks[0])
+    combined = familiar_chunks[0]
+    for chunk in familiar_chunks[1:]:
+        combined += unfamiliar_chunk
+        combined += chunk
+    return combined
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Split a familiar song into chunks, stuff a random chunk from an unfamiliar song in between, and export the result."
+        description="Split a familiar song into chunks and stuff a random chunk from an unfamiliar song between each pair of familiar chunks."
     )
     parser.add_argument("familiar", help="Path to the familiar song audio file.")
     parser.add_argument("unfamiliar", help="Path to the unfamiliar song audio file.")
@@ -127,13 +123,6 @@ def main():
         type=int,
         default=4,
         help="Number of chunks to split the familiar song into (default: 4).",
-    )
-    parser.add_argument(
-        "-p",
-        "--position",
-        type=int,
-        default=None,
-        help="Position at which to insert the unfamiliar chunk (0 = before first chunk, N = after last chunk). If omitted, a random position is chosen.",
     )
     parser.add_argument(
         "-o",
@@ -146,7 +135,7 @@ def main():
         "--seed",
         type=int,
         default=None,
-        help="Random seed for reproducible random chunk/position selection.",
+        help="Random seed for reproducible random unfamiliar chunk selection.",
     )
 
     args = parser.parse_args()
@@ -161,13 +150,14 @@ def main():
     chunk_length_ms = len(familiar_chunks[0])
 
     unfamiliar_chunk = extract_random_chunk(unfamiliar, chunk_length_ms)
-    result = stuff_chunk(familiar_chunks, unfamiliar_chunk, args.position)
+    result = stuff_chunk(familiar_chunks, unfamiliar_chunk)
 
     output_path = Path(args.output)
+    num_gaps = len(familiar_chunks) - 1
     print(f"Familiar song length: {len(familiar)}ms")
     print(f"Split into {len(familiar_chunks)} chunks of ~{chunk_length_ms}ms each")
     print(f"Unfamiliar chunk extracted: {len(unfamiliar_chunk)}ms")
-    print(f"Insert position: {args.position if args.position is not None else 'random'}")
+    print(f"Unfamiliar chunk inserted {num_gaps} time(s) between familiar chunks")
     print(f"Result length: {len(result)}ms")
     print(f"Exporting to: {output_path.resolve()}")
 
